@@ -93,6 +93,7 @@ my $patch_mode;
 my $patch_mode_revision;
 my @patch_mode_hunk_filter;
 my $patch_mode_negate_filter;
+my $patch_mode_autosplit;
 
 sub apply_patch;
 sub apply_patch_for_checkout_commit;
@@ -1318,6 +1319,10 @@ sub patch_update_file {
 	my $path = shift;
 	my ($head, @hunk) = parse_diff($path);
 
+	if ($patch_mode_autosplit) {
+		@hunk = map { split_hunk($_->{TEXT}, $_->{DISPLAY}) } @hunk;
+	}
+
 	if (@patch_mode_hunk_filter) {
 		@hunk = grep { want_hunk($_) } @hunk;
 		return unless @hunk;
@@ -1620,6 +1625,9 @@ sub process_args {
 		}
 		elsif ($ARGV[0] eq '--negate-hunk-filter') {
 			$patch_mode_negate_filter = 1;
+		}
+		elsif ($ARGV[0] eq '--split-hunks') {
+			$patch_mode_autosplit = 1;
 		}
 		else {
 			last;
