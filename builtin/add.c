@@ -141,14 +141,19 @@ static void refresh(int verbose, const struct pathspec *pathspec)
 }
 
 int run_add_interactive(const char *revision, const char *patch_mode,
-			const struct pathspec *pathspec)
+			const char *match, const struct pathspec *pathspec)
 {
 	int status, i;
 	struct argv_array argv = ARGV_ARRAY_INIT;
+	struct strbuf match_arg = STRBUF_INIT;
 
 	argv_array_push(&argv, "add--interactive");
 	if (patch_mode)
 		argv_array_push(&argv, patch_mode);
+	if (match) {
+		strbuf_addf(&match_arg, "--hunk-filter=%s", match);
+		argv_array_push(&argv, match_arg.buf);
+	}
 	if (revision)
 		argv_array_push(&argv, revision);
 	argv_array_push(&argv, "--");
@@ -158,10 +163,12 @@ int run_add_interactive(const char *revision, const char *patch_mode,
 
 	status = run_command_v_opt(argv.argv, RUN_GIT_CMD);
 	argv_array_clear(&argv);
+	strbuf_release(&match_arg);
 	return status;
 }
 
-int interactive_add(int argc, const char **argv, const char *prefix, int patch)
+int interactive_add(int argc, const char **argv, const char *prefix, int patch,
+		    const char *match)
 {
 	struct pathspec pathspec;
 
@@ -173,7 +180,7 @@ int interactive_add(int argc, const char **argv, const char *prefix, int patch)
 
 	return run_add_interactive(NULL,
 				   patch ? "--patch" : NULL,
-				   &pathspec);
+				   match, &pathspec);
 }
 
 static int edit_patch(int argc, const char **argv, const char *prefix)
@@ -233,6 +240,7 @@ N_("The following paths are ignored by one of your .gitignore files:\n");
 
 static int verbose, show_only, ignored_too, refresh_only;
 static int ignore_add_errors, intent_to_add, ignore_missing;
+static const char *hunk_filter;
 
 #define ADDREMOVE_DEFAULT 1
 static int addremove = ADDREMOVE_DEFAULT;
@@ -263,6 +271,8 @@ static struct option builtin_add_options[] = {
 	OPT_BOOL( 0 , "refresh", &refresh_only, N_("don't add, only refresh the index")),
 	OPT_BOOL( 0 , "ignore-errors", &ignore_add_errors, N_("just skip files which cannot be added because of errors")),
 	OPT_BOOL( 0 , "ignore-missing", &ignore_missing, N_("check if - even missing - files are ignored in dry run")),
+	OPT_STRING(0, "hunk-filter", &hunk_filter, "regex",
+		   "Filter with pattern within --patch hunks"),
 	OPT_END(),
 };
 
@@ -314,7 +324,8 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 	if (patch_interactive)
 		add_interactive = 1;
 	if (add_interactive)
-		exit(interactive_add(argc - 1, argv + 1, prefix, patch_interactive));
+		exit(interactive_add(argc - 1, argv + 1, prefix,
+				     patch_interactive, hunk_filter));
 
 	if (edit_interactive)
 		return(edit_patch(argc, argv, prefix));

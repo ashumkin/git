@@ -270,7 +270,7 @@ static int checkout_paths(const struct checkout_opts *opts,
 		    opts->new_branch);
 
 	if (opts->patch_mode)
-		return run_add_interactive(revision, "--patch=checkout",
+		return run_add_interactive(revision, "--patch=checkout", NULL,
 					   &opts->pathspec);
 
 	lock_file = xcalloc(1, sizeof(struct lock_file));

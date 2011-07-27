@@ -296,9 +296,10 @@ int is_descendant_of(struct commit *, struct commit_list *);
 int in_merge_bases(struct commit *, struct commit *);
 int in_merge_bases_many(struct commit *, int, struct commit **);
 
-extern int interactive_add(int argc, const char **argv, const char *prefix, int patch);
+extern int interactive_add(int argc, const char **argv, const char *prefix,
+			   int patch, const char *match);
 extern int run_add_interactive(const char *revision, const char *patch_mode,
-			       const struct pathspec *pathspec);
+			       const char *match, const struct pathspec *pathspec);
 
 static inline int single_parent(struct commit *commit)
 {
