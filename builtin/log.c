@@ -936,7 +936,7 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 	struct shortlog log;
 	struct strbuf sb = STRBUF_INIT;
 	int i;
-	const char *encoding = "UTF-8";
+	const char *encoding =  get_commit_output_encoding();
 	struct diff_options opts;
 	int need_8bit_cte = 0;
 	struct pretty_print_context pp = {0};
@@ -952,7 +952,7 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 		return;
 
 	log_write_email_headers(rev, head, &pp.subject, &pp.after_subject,
-				&need_8bit_cte);
+				&need_8bit_cte, get_commit_output_encoding());
 
 	for (i = 0; !need_8bit_cte && i < nr; i++) {
 		const char *buf = get_commit_buffer(list[i], NULL);

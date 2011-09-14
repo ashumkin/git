@@ -337,7 +337,8 @@ void fmt_output_commit(struct strbuf *filename,
 void log_write_email_headers(struct rev_info *opt, struct commit *commit,
 			     const char **subject_p,
 			     const char **extra_headers_p,
-			     int *need_8bit_cte_p)
+			     int *need_8bit_cte_p,
+			     const char *encoding)
 {
 	const char *subject = NULL;
 	const char *extra_headers = opt->extra_headers;
@@ -394,11 +395,12 @@ void log_write_email_headers(struct rev_info *opt, struct commit *commit,
 			 "format.\n"
 			 "--%s%s\n"
 			 "Content-Type: text/plain; "
-			 "charset=UTF-8; format=fixed\n"
+			 "charset=%s; format=fixed\n"
 			 "Content-Transfer-Encoding: 8bit\n\n",
 			 extra_headers ? extra_headers : "",
 			 mime_boundary_leader, opt->mime_boundary,
-			 mime_boundary_leader, opt->mime_boundary);
+			 mime_boundary_leader, opt->mime_boundary,
+			 encoding);
 		extra_headers = subject_buffer;
 
 		if (opt->numbered_files)
@@ -605,7 +607,7 @@ void show_log(struct rev_info *opt)
 
 	if (opt->commit_format == CMIT_FMT_EMAIL) {
 		log_write_email_headers(opt, commit, &ctx.subject, &extra_headers,
-					&ctx.need_8bit_cte);
+					&ctx.need_8bit_cte, get_commit_output_encoding());
 	} else if (opt->commit_format != CMIT_FMT_USERFORMAT) {
 		fputs(diff_get_color_opt(&opt->diffopt, DIFF_COMMIT), stdout);
 		if (opt->commit_format != CMIT_FMT_ONELINE)
