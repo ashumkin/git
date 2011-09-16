@@ -1914,4 +1914,70 @@ test_expect_success $PREREQ 'leading and trailing whitespaces are removed' '
 	test_cmp expected-list actual-list
 '
 
+test_expect_success $PREREQ 'setup multi-part message' '
+cat >multi-part-email-using-8bit <<EOF
+From fe6ecc66ece37198fe5db91fa2fc41d9f4fe5cc4 Mon Sep 17 00:00:00 2001
+Message-Id: <bogus-message-id@example.com>
+From: author@example.com
+Date: Sat, 12 Jun 2010 15:53:58 +0200
+Subject: [PATCH] =?UTF-8?q?=D0=94=D0=BE=D0=B1=D0=B0=D0=B2=D0=BB=D0=B5=D0=BD=20?=
+ =?UTF-8?q?=D1=84=D0=B0=D0=B9=D0=BB?=
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="------------123"
+
+This is a multi-part message in MIME format.
+--------------1.7.6.3.4.gf71f
+Content-Type: text/plain; charset=UTF-8; format=fixed
+Content-Transfer-Encoding: 8bit
+
+This is a message created with "git format-patch --attach=123"
+---
+ master   |    1 +
+ файл |    1 +
+ 2 files changed, 2 insertions(+), 0 deletions(-)
+ create mode 100644 master
+ create mode 100644 файл
+
+
+--------------123
+Content-Type: text/x-patch; name="0001-.patch"
+Content-Transfer-Encoding: 8bit
+Content-Disposition: attachment; filename="0001-.patch"
+
+diff --git a/master b/master
+new file mode 100644
+index 0000000..1f7391f
+--- /dev/null
++++ b/master
+@@ -0,0 +1 @@
++master
+diff --git a/файл b/файл
+new file mode 100644
+index 0000000..44e5cfe
+--- /dev/null
++++ b/файл
+@@ -0,0 +1 @@
++содержимое файла
+
+--------------123--
+EOF
+'
+
+test_expect_success $PREREQ 'setup expect' '
+cat >expected <<EOF
+Subject: [PATCH] =?UTF-8?q?=D0=94=D0=BE=D0=B1=D0=B0=D0=B2=D0=BB=D0=B5=D0=BD=20?= =?UTF-8?q?=D1=84=D0=B0=D0=B9=D0=BB?=
+EOF
+'
+
+test_expect_success $PREREQ '--attach/--inline also treats subject' '
+	clean_fake_sendmail &&
+	echo bogus |
+	git send-email --from=author@example.com --to=nobody@example.com \
+			--smtp-server="$(pwd)/fake.sendmail" \
+			--8bit-encoding=UTF-8 \
+			multi-part-email-using-8bit >stdout &&
+	grep "Subject" msgtxt1 >actual &&
+	test_cmp expected actual
+'
+
 test_done

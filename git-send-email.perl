@@ -1779,12 +1779,17 @@ sub file_has_nonascii {
 
 sub body_or_subject_has_nonascii {
 	my $fn = shift;
+	my $multipart = 0;
 	open(my $fh, '<', $fn)
 		or die "unable to open $fn: $!\n";
 	while (my $line = <$fh>) {
 		last if $line =~ /^$/;
+		if ($line =~ /^Content-Type:\s*multipart\/mixed.*$/) {
+			$multipart = 1;
+		}
 		return 1 if $line =~ /^Subject.*[^[:ascii:]]/;
 	}
+	return 0 if $multipart;
 	while (my $line = <$fh>) {
 		return 1 if $line =~ /[^[:ascii:]]/;
 	}
