@@ -7012,7 +7012,7 @@ proc commit_descriptor {p} {
 # append some text to the ctext widget, and make any SHA1 ID
 # that we know about be a clickable link.
 proc appendwithlinks {text tags} {
-    global ctext linknum curview
+    global ctext linknum curview linkmakers
 
     set start [$ctext index "end - 1c"]
     $ctext insert end $text $tags
@@ -7026,6 +7026,30 @@ proc appendwithlinks {text tags} {
 	$ctext tag add link$linknum "$start + $s c" "$start + $e c"
 	setlink $linkid link$linknum
 	incr linknum
+    }
+
+    if {$linkmakers == {}} return
+
+    set link_re {}
+    foreach {re rep} $linkmakers { lappend link_re $re }
+    set link_re "([join $link_re {)|(}])"
+
+    set ee 0
+    while {[regexp -indices -start $ee -- $link_re $text l]} {
+	set s [lindex $l 0]
+	set e [lindex $l 1]
+	set linktext [string range $text $s $e]
+	incr e
+	set ee $e
+
+	foreach {re rep} $linkmakers {
+	    if {![regsub $re $linktext $rep linkurl]} continue
+	    $ctext tag delete link$linknum
+	    $ctext tag add link$linknum "$start + $s c" "$start + $e c"
+	    seturllink $linkurl link$linknum
+	    incr linknum
+	    break
+	}
     }
 }
 
@@ -7057,6 +7081,53 @@ proc setlink {id lk} {
 	lappend pendinglinks($id) $lk
 	interestedin $id {makelink %P}
     }
+}
+
+proc get_link_config {} {
+    if {[catch {exec git config -z --get-regexp {^linkify\.}} linkers]} {
+	return {}
+    }
+
+    set linktypes [list]
+    foreach item [split $linkers "\0"] {
+	if {$item == ""} continue
+	if {![regexp {linkify\.(\S+)\.(regexp|subst)\s(.*)} $item _ k t v]} {
+	    continue
+	}
+	set linkconfig($t,$k) $v
+	if {$t == "regexp"} { lappend linktypes $k }
+    }
+
+    set linkmakers [list]
+    foreach k $linktypes {
+	if {![info exists linkconfig(subst,$k)]} {
+	    puts stderr "Warning: link `$k' is missing a substitution string"
+	} elseif {[catch {regexp -inline -- $linkconfig(regexp,$k) ""} err]} {
+	    puts stderr "Warning: link `$k': $err"
+	} else {
+	    lappend linkmakers $linkconfig(regexp,$k) $linkconfig(subst,$k)
+	}
+	unset linkconfig(regexp,$k)
+	unset -nocomplain linkconfig(subst,$k)
+    }
+    foreach k [array names linkconfig] {
+	regexp "subst,(.*)" $k _ k
+	puts stderr "Warning: link `$k' is missing a regular expression"
+    }
+    set linkmakers
+}
+
+proc openlink {url} {
+    exec git web--browse --config=gitk.browser $url &
+}
+
+proc seturllink {url lk} {
+    set qurl [string map {% %%} $url]
+    global ctext
+    $ctext tag conf $lk -foreground blue -underline 1
+    $ctext tag bind $lk <1> [list openlink $qurl]
+    $ctext tag bind $lk <Enter> {linkcursor %W 1}
+    $ctext tag bind $lk <Leave> {linkcursor %W -1}
 }
 
 proc appendshortlink {id {pre {}} {post {}}} {
@@ -12495,6 +12566,8 @@ if {[info exists permviews]} {
 if {[tk windowingsystem] eq "win32"} {
     focus -force .
 }
+
+set linkmakers [get_link_config]
 
 getcommits {}
 
