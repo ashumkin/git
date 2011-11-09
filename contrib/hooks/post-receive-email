@@ -73,6 +73,14 @@
 #   Default is "--stat --summary --find-copies-harder". Add -p to those
 #   options to include a unified diff of changes in addition to the usual
 #   summary output.
+# hooks.gitopts
+#   git options for the git diff-tree invocation that shows changes.
+#   Default is '-c core.quotepath=false' to be able to see non-ASCII filenames
+#   used in a project.
+# hooks.emailcharset
+#   The charset used in Content-Type header. UTF-8, if not specified.
+#   It can differ from i18n.logOutputEncoding (not to mess-up with gitweb
+#   which expects i18n.logOutputEncoding to be set to UTF-8)
 #
 # Notes
 # -----
@@ -238,11 +246,13 @@ generate_email_header()
 {
 	# --- Email (all stdout will be the email)
 	# Generate header
+	local subject="${emailprefix}$projectdesc $refname_type $short_refname ${change_type}d. $describe"
+	subject==?UTF-8?B?$(echo $subject | /usr/bin/openssl enc -base64 -A)?=
 	cat <<-EOF
 	To: $recipients
-	Subject: ${emailprefix}$projectdesc $refname_type $short_refname ${change_type}d. $describe
+	Subject: $subject
 	MIME-Version: 1.0
-	Content-Type: text/plain; charset=utf-8
+	Content-Type: text/plain; charset=$emailcharset
 	Content-Transfer-Encoding: 8bit
 	X-Git-Refname: $refname
 	X-Git-Reftype: $refname_type
@@ -252,7 +262,7 @@ generate_email_header()
 
 	This is an automated email from the git hooks/post-receive script. It was
 	generated because a ref change was pushed to the repository containing
-	the project "$projectdesc".
+	the project "$projectdesc_e".
 
 	The $refname_type, $short_refname has been ${change_type}d
 	EOF
@@ -266,7 +276,7 @@ generate_email_footer()
 
 	hooks/post-receive
 	--${SPACE}
-	$projectdesc
+	$projectdesc_e
 	EOF
 }
 
@@ -462,7 +472,7 @@ generate_update_branch_email()
 	# non-fast-forward updates.
 	echo ""
 	echo "Summary of changes:"
-	git diff-tree $diffopts $oldrev..$newrev
+	git $gitopts diff-tree $diffopts $oldrev..$newrev
 }
 
 #
@@ -473,7 +483,7 @@ generate_delete_branch_email()
 	echo "       was  $oldrev"
 	echo ""
 	echo $LOGBEGIN
-	git diff-tree -s --always --encoding=UTF-8 --pretty=oneline $oldrev
+	git $git_revlistopts diff-tree -s --always --encoding=$emailcharset --pretty=oneline $oldrev
 	echo $LOGEND
 }
 
@@ -549,11 +559,11 @@ generate_atag_email()
 		# performed on them
 		if [ -n "$prevtag" ]; then
 			# Show changes since the previous release
-			git shortlog "$prevtag..$newrev"
+			git $git_revlistopts shortlog "$prevtag..$newrev"
 		else
 			# No previous tag, show all the changes since time
 			# began
-			git shortlog $newrev
+			git $git_revlistopts shortlog $newrev
 		fi
 		;;
 	*)
@@ -573,7 +583,7 @@ generate_delete_atag_email()
 	echo "       was  $oldrev"
 	echo ""
 	echo $LOGBEGIN
-	git diff-tree -s --always --encoding=UTF-8 --pretty=oneline $oldrev
+	git $git_revlistopts diff-tree -s --always --encoding=$emailcharset --pretty=oneline $oldrev
 	echo $LOGEND
 }
 
@@ -619,7 +629,7 @@ generate_general_email()
 	echo ""
 	if [ "$newrev_type" = "commit" ]; then
 		echo $LOGBEGIN
-		git diff-tree -s --always --encoding=UTF-8 --pretty=medium $newrev
+		git $git_revlistopts diff-tree -s --always --encoding=$emailcharset --pretty=medium $newrev
 		echo $LOGEND
 	else
 		# What can we do here?  The tag marks an object that is not
@@ -638,7 +648,7 @@ generate_delete_general_email()
 	echo "       was  $oldrev"
 	echo ""
 	echo $LOGBEGIN
-	git diff-tree -s --always --encoding=UTF-8 --pretty=oneline $oldrev
+	git $git_revlistopts diff-tree -s --always --encoding=$emailcharset --pretty=oneline $oldrev
 	echo $LOGEND
 }
 
@@ -672,9 +682,9 @@ show_new_revisions()
 	git rev-parse --not $other_branches |
 	if [ -z "$custom_showrev" ]
 	then
-		git rev-list --pretty --stdin $revspec
+		git $git_revlistopts rev-list --pretty --stdin $revspec
 	else
-		git rev-list --stdin $revspec |
+		git $git_revlistopts rev-list --stdin $revspec |
 		while read onerev
 		do
 			eval $(printf "$custom_showrev" $onerev)
@@ -725,14 +735,6 @@ if [ -z "$GIT_DIR" ]; then
 	exit 1
 fi
 
-projectdesc=$(sed -ne '1p' "$GIT_DIR/description" 2>/dev/null)
-# Check if the description is unchanged from it's default, and shorten it to
-# a more manageable length if it is
-if expr "$projectdesc" : "Unnamed repository.*$" >/dev/null
-then
-	projectdesc="UNNAMED PROJECT"
-fi
-
 recipients=$(git config hooks.mailinglist)
 announcerecipients=$(git config hooks.announcelist)
 envelopesender=$(git config hooks.envelopesender)
@@ -741,6 +743,20 @@ custom_showrev=$(git config hooks.showrev)
 maxlines=$(git config hooks.emailmaxlines)
 diffopts=$(git config hooks.diffopts)
 : ${diffopts:="--stat --summary --find-copies-harder"}
+gitopts=$(git config hooks.gitopts || echo '-c core.quotepath=false')
+emailcharset=$(git config hooks.emailcharset || echo 'UTF-8')
+git_revlistopts="-c i18n.logOutputEncoding=$emailcharset"
+
+projectdesc=$(sed -ne '1p' "$GIT_DIR/description" 2>/dev/null)
+# Check if the description is unchanged from it's default, and shorten it to
+# a more manageable length if it is
+if expr "$projectdesc" : "Unnamed repository.*$" >/dev/null
+then
+	projectdesc="UNNAMED PROJECT"
+fi
+# Leave description in UTF-8 to be used in the Subject header
+# But convert it to an hooks.emailcharset encoding to be used in a message body
+projectdesc_e=$(echo $projectdesc | /usr/bin/iconv -f UTF-8 -t $emailcharset 2>/dev/null)
 
 # --- Main loop
 # Allow dual mode: run from the command line just like the update hook, or
