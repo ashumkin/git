@@ -1948,6 +1948,10 @@ msgstr "Конфликтующий файл не существует"
 msgid "Not a GUI merge tool: '%s'"
 msgstr "'%s' не является программой слияния"
 
+#: lib/mergetool.tcl:280
+msgid "%s cannot be used without a base"
+msgstr "%s не может использоваться без базовой версии"
+
 #: lib/mergetool.tcl:268
 #, tcl-format
 msgid "Unsupported merge tool '%s'"
