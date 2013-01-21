@@ -194,6 +194,15 @@ proc merge_resolve_tool2 {} {
 			set cmdline [list "$merge_tool_path" "$LOCAL" "$REMOTE" "-mergeoutput=$MERGED"]
 		}
 	}
+	diffuse {
+		if {$base_stage ne {}} {
+			set cmdline [list "$merge_tool_path" \
+				"$LOCAL" "$MERGED" "$REMOTE" "$BASE"]
+		} else {
+			set cmdline [list "$merge_tool_path" \
+				"$LOCAL" "$MERGED" "$REMOTE"]
+		}
+	}
 	ecmerge {
 		if {$base_stage ne {}} {
 			set cmdline [list "$merge_tool_path" "$BASE" "$LOCAL" "$REMOTE" --default --mode=merge3 --to="$MERGED"]
