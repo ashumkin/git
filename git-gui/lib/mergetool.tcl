@@ -257,6 +257,16 @@ proc merge_resolve_tool2 {} {
 			set cmdline [list "$merge_tool_path" -o "$MERGED" "$LOCAL" "$REMOTE"]
 		}
 	}
+	tortoisemerge {
+		if {$base_stage ne {}} {
+			set cmdline [list "$merge_tool_path" \
+				-base:$BASE -mine:$LOCAL \
+				-theirs:$REMOTE -merged:$MERGED]
+		} else {
+			error_popup [mc "%s cannot be used without a base" "TortoiseMerge"]
+			return
+		}
+	}
 	vimdiff {
 		error_popup [mc "Not a GUI merge tool: '%s'" $tool]
 		return
