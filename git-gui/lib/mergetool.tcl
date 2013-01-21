@@ -211,7 +211,13 @@ proc merge_resolve_tool2 {} {
 		}
 	}
 	gvimdiff {
-		set cmdline [list "$merge_tool_path" -f "$LOCAL" "$MERGED" "$REMOTE"]
+		if {$base_stage ne {}} {
+			set cmdline [list "$merge_tool_path" -f -d -c "wincmd J" \
+				"$MERGED" "$LOCAL" "$BASE" "$REMOTE"]
+		} else {
+			set cmdline [list "$merge_tool_path" -f -d -c "wincmd l" \
+				"$LOCAL" "$MERGED" "$REMOTE"]
+		}
 	}
 	kdiff3 {
 		if {$base_stage ne {}} {
