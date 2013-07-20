@@ -472,6 +472,11 @@ generate_update_branch_email()
 	# non-fast-forward updates.
 	echo ""
 	echo "Summary of changes:"
+	if [ ! $fast_forward ]; then
+		# show patches (if they are wanted) if fast-forward updates only
+		# remove "-p|--patch|-u"
+		diffopts=$(echo $diffopts | sed -e 's/\(-p\|-u\|--patch\)\>//g')
+	fi
 	git $gitopts diff-tree $diffopts $oldrev..$newrev
 }
 
