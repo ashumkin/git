@@ -254,6 +254,7 @@ generate_email_header()
 	MIME-Version: 1.0
 	Content-Type: text/plain; charset=$emailcharset
 	Content-Transfer-Encoding: 8bit
+	X-Git-Path: $(pwd)
 	X-Git-Refname: $refname
 	X-Git-Reftype: $refname_type
 	X-Git-Oldrev: $oldrev
