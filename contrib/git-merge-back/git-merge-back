@@ -1,0 +1,72 @@
+#!/bin/bash
+
+debug=0
+no_delete=0
+back=0
+merge_opt='--ff-only'
+GIT_CONFIG_FILE=~/.git.mantis.headlines
+
+while [ "$1" != "" ]; do
+    arg=$1;
+    shift;
+    case "$arg" in
+        -D|--debug)
+            debug=1
+            ;;
+        -n|--no-delete)
+            no_delete=1
+            ;;
+        -b|--back)
+            no_delete=1
+            back=1
+            ;;
+        -F|--no-ff)
+            merge_opt='--no-ff'
+            ;;
+        *)
+            ;;
+    esac
+done
+c_branch=`git branch | grep ^\* | awk '{print $2}'`
+c_branch_sha=`git log --max-count=1 --pretty=%H`
+echo current branch is "\"$c_branch\" ($c_branch_sha)"
+if [ "$p_branch" == "" ]; then
+    # find parent branch name
+    # but we do not want merge into unchanged branch
+    p_branch=`git branch -vv | grep -P '^\*' | sed -nr 's/.+?\[(\S+?):.*?\].+/\1/p'`
+    if [ "$p_branch" != "" ]; then
+        echo found upstream branch \""$p_branch"\"
+    else
+        same_branch=`git branch -vv | grep -P '^\*' | sed -nr 's/.+?\[(\S+?)\].+/\1/p'`
+        if [ "$same_branch" != "" ]; then
+            echo found upstream branch \""$same_branch"\" but there is no changes
+            exit 1
+        fi
+    fi
+fi
+if [[ "$p_branch" =~ .+/.+ ]]; then
+	echo but upstream is a remote!
+	exit 2
+fi
+if [ "$p_branch" != "" ]; then
+    echo merging into "$p_branch"...
+    if [ "$debug" != "0" ]; then
+        echo "Debug mode ON"
+    else
+        git checkout --force "$p_branch" && git merge $merge_opt "$c_branch"
+        if [ $? == 0 ]; then
+            if [ "$back" != 0 ]; then
+                git co "$c_branch"
+            elif [ "$no_delete" == 0 ]; then
+                ERR=$(git rev-parse --abbrev-ref $c_branch | sed -rne 's/^err-([0-9]+).*/\1/p')
+                # delete cache of error headline
+                # see <BBA-project>/Scripts/Git.hooks/prepare-commit-msg-merge
+                git config --file "$GIT_CONFIG_FILE" --remove-section "log.error.$ERR" 2>/dev/null
+                git branch -d "$c_branch"
+            fi
+        fi
+    fi
+else
+    echo "upstream branch not found!"
+    exit 1
+fi
