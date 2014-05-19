@@ -21,18 +21,25 @@ open_editor() {
 }
 
 mode_diff() {
-	git diff --no-prefix --relative "$@" |
-	perl -ne '
-	if (m{^\+\+\+ (.*)}) { $file = $1; next }
-	defined($file) or next;
-	if (m/^@@ .*\+(\d+)/) { $line = $1; next }
-	defined($line) or next;
-	if (/^ /) { $line++; next }
-	if (/^[-+]\s*(.*)/) {
-		print "$file:$line: $1\n";
-		$line = undef;
-	}
-	'
+	if [[ "$@" == *"--check"* ]]
+	then
+		git diff --no-prefix --relative "$@" |
+		# print every odd line which is already in quickfix format
+		perl -ne '$line++ % 2 or print;'
+	else
+		git diff --no-prefix --relative "$@" |
+		perl -ne '
+		if (m{^\+\+\+ (.*)}) { $file = $1; next }
+		defined($file) or next;
+		if (m/^@@ .*\+(\d+)/) { $line = $1; next }
+		defined($line) or next;
+		if (/^ /) { $line++; next }
+		if (/^[-+]\s*(.*)/) {
+			print "$file:$line: $1\n";
+			$line = undef;
+		}
+		'
+	fi
 }
 
 mode_merge() {
