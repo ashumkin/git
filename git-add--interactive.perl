@@ -86,6 +86,7 @@ sub colored {
 # command line options
 my $patch_mode;
 my $patch_mode_revision;
+my $patch_match;
 
 sub apply_patch;
 sub apply_patch_for_checkout_commit;
@@ -1255,6 +1256,17 @@ sub display_hunks {
 	return $i;
 }
 
+sub want_hunk {
+	my ($re, $hunk) = @_;
+
+	return 1 if $hunk->{TYPE} ne 'hunk';
+
+	foreach my $line (@{$hunk->{TEXT}}) {
+		return 1 if $line =~ $re;
+	}
+	return 0;
+}
+
 sub patch_update_file {
 	my $quit = 0;
 	my ($ix, $num);
@@ -1278,6 +1290,20 @@ sub patch_update_file {
 
 	$num = scalar @hunk;
 	$ix = 0;
+
+	if ($patch_match) {
+		# mark non-matching text hunks as "do not want"
+		foreach my $hunk (@hunk) {
+			if (!want_hunk($patch_match, $hunk)) {
+				$hunk->{USE} = 0;
+			}
+		}
+		# and then advance us to the first undecided hunk
+		while ($ix < $num) {
+			last unless defined $hunk[$ix]{USE};
+			$ix++;
+		}
+	}
 
 	while (1) {
 		my ($prev, $next, $other, $undecided, $i);
@@ -1578,6 +1604,10 @@ sub process_args {
 		} else {
 			$patch_mode = 'stage';
 			$arg = shift @ARGV or die "missing --";
+			if ($arg =~ /--match=(.*)/) {
+				$patch_match = qr/$1/;
+				$arg = shift @ARGV or die "missing --";
+			}
 		}
 		die "invalid argument $arg, expecting --"
 		    unless $arg eq "--";

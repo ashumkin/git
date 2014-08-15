@@ -184,7 +184,7 @@ static int interactive_reset(const char *revision, const char **argv,
 	if (*argv)
 		pathspec = get_pathspec(prefix, argv);
 
-	return run_add_interactive(revision, "--patch=reset", pathspec);
+	return run_add_interactive(revision, "--patch=reset", NULL, pathspec);
 }
 
 static int read_from_tree(const char *prefix, const char **argv,

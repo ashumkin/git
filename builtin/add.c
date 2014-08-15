@@ -214,20 +214,25 @@ static const char **validate_pathspec(int argc, const char **argv, const char *p
 }
 
 int run_add_interactive(const char *revision, const char *patch_mode,
-			const char **pathspec)
+			const char *match, const char **pathspec)
 {
 	int status, ac, pc = 0;
 	const char **args;
+	struct strbuf match_arg = STRBUF_INIT;
 
 	if (pathspec)
 		while (pathspec[pc])
 			pc++;
 
-	args = xcalloc(sizeof(const char *), (pc + 5));
+	args = xcalloc(sizeof(const char *), (pc + 6));
 	ac = 0;
 	args[ac++] = "add--interactive";
 	if (patch_mode)
 		args[ac++] = patch_mode;
+	if (match) {
+		strbuf_addf(&match_arg, "--match=%s", match);
+		args[ac++] = match_arg.buf;
+	}
 	if (revision)
 		args[ac++] = revision;
 	args[ac++] = "--";
@@ -239,10 +244,12 @@ int run_add_interactive(const char *revision, const char *patch_mode,
 
 	status = run_command_v_opt(args, RUN_GIT_CMD);
 	free(args);
+	strbuf_release(&match_arg);
 	return status;
 }
 
-int interactive_add(int argc, const char **argv, const char *prefix, int patch)
+int interactive_add(int argc, const char **argv, const char *prefix, int patch,
+		    const char *match)
 {
 	const char **pathspec = NULL;
 
@@ -254,7 +261,7 @@ int interactive_add(int argc, const char **argv, const char *prefix, int patch)
 
 	return run_add_interactive(NULL,
 				   patch ? "--patch" : NULL,
-				   pathspec);
+				   match, pathspec);
 }
 
 static int edit_patch(int argc, const char **argv, const char *prefix)
@@ -311,6 +318,7 @@ N_("The following paths are ignored by one of your .gitignore files:\n");
 
 static int verbose = 0, show_only = 0, ignored_too = 0, refresh_only = 0;
 static int ignore_add_errors, addremove, intent_to_add, ignore_missing = 0;
+static const char *patch_match;
 
 static struct option builtin_add_options[] = {
 	OPT__DRY_RUN(&show_only, "dry run"),
@@ -318,6 +326,8 @@ static struct option builtin_add_options[] = {
 	OPT_GROUP(""),
 	OPT_BOOLEAN('i', "interactive", &add_interactive, "interactive picking"),
 	OPT_BOOLEAN('p', "patch", &patch_interactive, "select hunks interactively"),
+	OPT_STRING(0, "match", &patch_match, "regex",
+		   "find pattern within --patch hunks"),
 	OPT_BOOLEAN('e', "edit", &edit_interactive, "edit current diff and apply"),
 	OPT__FORCE(&ignored_too, "allow adding otherwise ignored files"),
 	OPT_BOOLEAN('u', "update", &take_worktree_changes, "update tracked files"),
@@ -378,7 +388,8 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 	if (patch_interactive)
 		add_interactive = 1;
 	if (add_interactive)
-		exit(interactive_add(argc - 1, argv + 1, prefix, patch_interactive));
+		exit(interactive_add(argc - 1, argv + 1, prefix,
+				     patch_interactive, patch_match));
 
 	if (edit_interactive)
 		return(edit_patch(argc, argv, prefix));

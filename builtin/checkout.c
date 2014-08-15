@@ -761,7 +761,8 @@ static int git_checkout_config(const char *var, const char *value, void *cb)
 static int interactive_checkout(const char *revision, const char **pathspec,
 				struct checkout_opts *opts)
 {
-	return run_add_interactive(revision, "--patch=checkout", pathspec);
+	return run_add_interactive(revision, "--patch=checkout", NULL,
+				   pathspec);
 }
 
 struct tracking_name_data {
