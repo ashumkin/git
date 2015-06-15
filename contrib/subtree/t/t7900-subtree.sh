@@ -1090,4 +1090,50 @@ test_expect_success 'subtree descendant check' '
 	)
 '
 
+# test push
+
+cd ../..
+
+mkdir test-push
+
+cd test-push
+
+test_expect_success 'init main' '
+	test_create_repo main
+'
+
+test_expect_success 'init sub' '
+	test_create_repo "sub project"
+'
+
+cd ./"sub project"
+
+test_expect_success 'add subproject' '
+	create "sub project" &&
+	git commit -m "Sub project: 1" &&
+	git branch sub-branch-1
+'
+
+cd ../main
+
+test_expect_success 'make first commit and add subproject' '
+	create "main-1" &&
+	git commit -m "main: 1" &&
+	git subtree add "../sub project" --prefix "sub dir" --message "Added subproject" sub-branch-1 &&
+	check_equal "$(last_commit_message)" "Added subproject"
+'
+
+test_expect_success 'make second commit to a subproject file and push it into a sub project' '
+	create "sub dir/sub1" &&
+	git commit -m "Sub project: 2" &&
+	git subtree push "../sub project" --prefix "sub dir" sub-branch-1
+'
+
+cd ../"sub project"
+
+test_expect_success 'Test second commit is pushed' '
+	git checkout sub-branch-1 &&
+	check_equal "$(last_commit_message)" "Sub project: 2"
+'
+
 test_done
