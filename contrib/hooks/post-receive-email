@@ -248,12 +248,14 @@ generate_email_header()
 	# Generate header
 	local subject="${emailprefix}$projectdesc $refname_type $short_refname ${change_type}d. $describe"
 	subject==?UTF-8?B?$(echo $subject | /usr/bin/openssl enc -base64 -A)?=
+	local gitolite_user=${GL_USER:+" by Gitolite user '$GL_USER'"}
 	cat <<-EOF
 	To: $recipients
 	Subject: $subject
 	MIME-Version: 1.0
 	Content-Type: text/plain; charset=$emailcharset
 	Content-Transfer-Encoding: 8bit
+	X-Git-User: $GL_USER
 	X-Git-Path: $(pwd)
 	X-Git-Refname: $refname
 	X-Git-Reftype: $refname_type
@@ -262,7 +264,7 @@ generate_email_header()
 	Auto-Submitted: auto-generated
 
 	This is an automated email from the git hooks/post-receive script. It was
-	generated because a ref change was pushed to the repository containing
+	generated because a ref change was pushed${gitolite_user} to the repository containing
 	the project "$projectdesc_e".
 
 	The $refname_type, $short_refname has been ${change_type}d
