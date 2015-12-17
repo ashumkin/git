@@ -728,6 +728,24 @@ send_mail()
 	fi
 }
 
+get_project_description()
+{
+	projectdesc=$(sed -ne '1p' "$GIT_DIR/description" 2>/dev/null)
+	# Check if the description is unchanged from it's default, and shorten it to
+	# a more manageable length if it is
+	if [ -z "$projectdesc" ] || expr "$projectdesc" : "Unnamed repository.*$" >/dev/null
+	then
+		git_dir="$GIT_DIR"
+		if [ "$git_dir" = "." ]
+		then
+			git_dir=$(pwd)
+		fi
+		projectdesc="$(basename "$git_dir")"
+		projectdesc=${projectdesc%.*}
+	fi
+	echo $projectdesc
+}
+
 # ---------------------------- main()
 
 # --- Constants
@@ -755,13 +773,7 @@ gitopts=$(git config hooks.gitopts || echo '-c core.quotepath=false')
 emailcharset=$(git config hooks.emailcharset || echo 'UTF-8')
 git_revlistopts="-c i18n.logOutputEncoding=$emailcharset"
 
-projectdesc=$(sed -ne '1p' "$GIT_DIR/description" 2>/dev/null)
-# Check if the description is unchanged from it's default, and shorten it to
-# a more manageable length if it is
-if expr "$projectdesc" : "Unnamed repository.*$" >/dev/null
-then
-	projectdesc="UNNAMED PROJECT"
-fi
+projectdesc=$(get_project_description)
 # Leave description in UTF-8 to be used in the Subject header
 # But convert it to an hooks.emailcharset encoding to be used in a message body
 projectdesc_e=$(echo $projectdesc | /usr/bin/iconv -f UTF-8 -t $emailcharset 2>/dev/null)
